@@ -14,10 +14,19 @@
 Для присоединения к проекту, надо:
  - Зарегистрироваться на github.com
  - Пройти курс молодого бойца: http://help.github.com/win-set-up-git/ (возможно под линукс, в таком случае Git for Windows не понадобится, а курс молодого бойца надо будет начинать с "Next: Set Up SSH Keys")
- - Прилать мне ник, чтобы я добавил его к репозиторию
+ - Прислать мне ник, чтобы я добавил его к репозиторию
 
 Скачивание репозитория:
 > git clone git@github.com:username/Spoon-Knife.git
 > cd Spoon-Knife
 > git remote add upstream git://github.com/octocat/Spoon-Knife.git
 > git fetch upstream
+
+Документация (обязательно):
+http://gnuu.org/2009/09/18/writing-your-own-toy-compiler/all/1/
+
+Особенности работы под виндой:
+ - Кракозябы при работе с русским текстом в названиях файлов и в комментариях к коммиту. Посему все комменты и файлы пишем на английском.
+ 
+ Оригинальный синтаксис языка ALGOL-60
+ - http://www.masswerk.at/algol60/syntax.txt
