@@ -30,3 +30,12 @@ http://gnuu.org/2009/09/18/writing-your-own-toy-compiler/all/1/
  
  Оригинальный синтаксис языка ALGOL-60
  - http://www.masswerk.at/algol60/syntax.txt
+ 
+Классная дока
+ - http://foja.dcs.fmph.uniba.sk/kompilatory/docs/compiler.pdf
+ 
+ Для запуска Bison: 
+ > bison -vd parser.y
+ 
+ Для запуска flex:
+ > flex tokens.l
