@@ -1,90 +1,47 @@
 %{
-    #include <string>
-    #include "node.h"
-    #include "parser.hpp"
-    #define SAVE_TOKEN yylval.string = new std::string(yytext, yyleng)
-    #define TOKEN(t) (yylval.token = t)
-    extern "C" int yywrap() { }
+#include "Simple.tab.h" /* The tokens */
 %}
-
+DIGIT   [0-9]
+LETTER  [a-zA-Z]
+ANY_SYMBOL_SEQ_WO_QUOTE [^\"]*
 %%
-//операторы
-//арифметические
-    "+"                                  return TOKEN(TPLUS);
-    "-"                                   return TOKEN(TMINUS);
-    "*"                                   return TOKEN(TMUL);
-    "/"                                   return TOKEN(TDIV);
-    "ч"                                  return TOKEN(TDIV);
-    "POWER"                                  return TOKEN(TPOWER);
-    
-//сравненительные
-    "<" | "LESS"                                 return TOKEN(TCLESS);
-    "s" | "NOTGREATER"                              return TOKEN(TCNGREATER);
-    ">" | "GREATER"                                 return TOKEN(TCGREATER);
-    "Д" | "NOTLESS"                              return TOKEN(TCNLESS);
-    "=" | "EQUAL"                                 return TOKEN(TCEQ);
-    "," | "NOTEQUAL"                                return TOKEN(TCNEQ);
-    
-//логические
-    "EQUIV"                                return TOKEN(TLEQUIV);
-    "IMPL"                                return TOKEN(TLIMPL);
-    "OR"                                return TOKEN(TLOR);
-    "AND"                                return TOKEN(TLAND);
-    "NOT"                                return TOKEN(TLNOT);
-
-//пробельные символы    
-    [ \t\n];    
-    
-//последовательности
-    "GOTO"                                  return TOKEN(TGOTO);
-    "IF"                                return TOKEN(TIF);
-    "THEN"                                 return TOKEN(TTHEN);
-    "ELSE"                                 return TOKEN(TELSE);
-    "FOR"                                 return TOKEN(TFOR);
-    "DO"                                return TOKEN(TDO);
-    
-//разделитель
-    ","                                return TOKEN(TCOMMA);
-    "."                                 return TOKEN(TDOT);
-    "E";
-    ":"                                 return TOKEN(TDDOT);
-    ";"                                 return TOKEN(TDCOMMA);
-    ":="                                 return TOKEN(TASSIGNMENT);
-    "_"                                 return TOKEN(TUNDERLINE);
-    "STEP"                                 return TOKEN(TSTEP);
-    "UNTIL"                                 return TOKEN(TUNTIL);
-    "WHILE"                                 return TOKEN(TWHILE);
-    "COMMENT"                                 return TOKEN(TCOMMENT);
-    
-//границы
-    "("                                 return TOKEN(TROPEN);
-    ")"                                 return TOKEN(TRCLOSE);
-    "["                                 return TOKEN(TBOPEN);
-    "]"                                 return TOKEN(TBCLOSE);
-    "BEGIN"                        return TOKEN(TBEGIN); 
-    "END"                        return TOKEN(TEND); 
-    
-//деклараторы
-    "OWN"                                 return TOKEN(TDOWN);
-    "BOOLEAN"                                 return TOKEN(TDBOOLEAN);
-    "INTEGER"                                 return TOKEN(TDINTEGER);
-    "REAL"                                 return TOKEN(TDREAL);
-    "ARRAY"                        return TOKEN(TDARRAY); 
-    "SWITCH"                        return TOKEN(TDSWITCH); 
-    
-//спецификаторы
-    "STRING"                                 return TOKEN(TSSTRING);
-    "LABEL"                                 return TOKEN(TSLABEL);
-    "VALUE"                                 return TOKEN(TSVALUE);
-
-//логические значени€
-    "TRUE"                                 return TOKEN(TTRUE);
-    "FALSE"                                 return TOKEN(TFALSE);
-
-//числа
-    [0-9]               return TOKEN(TDIGIT);
-    
-//буква
-    [a-zA-Z]            return TOKEN(TLETTER);
-    
+":="    {return(TASSIGN);}
+BEGIN   {return(TBEGIN);} 
+END     {return(TEND);}
+OWN     {return(TOWN);}
+REAL    {return(TREAL);}
+INTEGER {return(TINTEGER);}
+BOOLEAN {return(TBOOLEAN);}
+ARRAY   {return(TARRAY);}
+SWITCH  {return(TSWITCH);}
+PROCEDURE   {return(TPROCEDURE);}
+STRING  {return(TSTRING);}
+LABEL   {return(TLABEL);}
+VALUE   {return(TVALUE);}
+STEP    {return(TSTEP);}
+UNTIL   {return(UNTIL);}
+WHILE   {return(TWHILE);}
+COMMENT {return(TCOMMENT);}
+GOTO    {return(TGOTO);}
+IF      {return(TIF);}
+THEN    {return(TTHEN);}
+ELSE    {return(TELSE);}
+FOR     {return(TFOR);}
+DO      {return(TDO);} 
+EQUIV   {return(TEQUIV);}
+IMPL    {return(TIMPL);}
+OR      {return(TOR);}
+AND     {return(TAND);}
+NOT     {return(TNOT);}
+LESS    {return(TLESS);}
+"<="|NOTGREATER  {return(TNOTGREATER);}
+EQUAL   {return(TEQUAL);}
+">="|NOTLESS {return(TNOTLESS);} 
+GREATER {return(GREATER);}
+"!="|NOTEQUAL    {return(TNOTEQUAL);}
+TRUE    {return(TTRUE);} 
+FALSE   {return(TFALSE);}
+POWER   {return(POWER);} 
+[ \t\n]+
+.       {return(yytext[0]);}
 %%
