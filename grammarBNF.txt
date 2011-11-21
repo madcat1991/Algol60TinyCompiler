@@ -71,7 +71,7 @@ Syntax of ALGOL 60
 		<simple arithmetic expression> ::= <term> | <adding operator> <term> | <simple arithmetic expression> <adding operator> <term>
 			<adding operator> ::= + | -
 			<term> ::= <factor> | <term> <multiplying operator> <factor>
-				<multiplying operator> ::= * | / | ÷
+				<multiplying operator> ::= * | / | ï¿½
 				<factor> ::= <primary> | <factor> | <factor> 'POWER' <primary>
 					<primary> ::= <unsigned number> | <variable> | <function designator> | ( <arithmetic expression> )
 						<unsigned number> ::= <decimal number> | <exponential part> | <decimal number> <exponential part>
@@ -88,9 +88,9 @@ Syntax of ALGOL 60
 					<Boolean secondary> ::= <Boolean primary> | 'NOT' <Boolean primary>
 						<Boolean primary> ::= <logical value> | <variable> | <function designator> | <relation> | ( <Boolean expression> )
 							<relation> ::= <simple arithmetic expression> <relational operator> <simple arithmetic expression>
-								<relational operator> ::= < | ¾ | = | „ | > | ‚ |
+								<relational operator> ::= < | ï¿½ | = | ï¿½ | > | ï¿½ |
 								                          'LESS' | 'NOTGREATER' | 'EQUAL' | 'NOTLESS' | 'GREATER' | 'NOTEQUAL'
-							<function designator> ::= <procedure identifier> <actual parameter part>
+							<function designator> : := <procedure identifier> <actual parameter part>
 
 <variable> ::= <simple variable> | <subscripted variable>
 	<simple variable> ::= <variable identifier>
@@ -119,8 +119,8 @@ Syntax of ALGOL 60
 <delimiter> ::= <operator> | <separator> | <bracket> | <declarator> | <specificator>
 
 <operator> ::= <arithmetic operator> | <relational operator> | <logical operator> | <sequential operator>
-<arithmetic operator> ::= + | - | * | / | ÷ | 'POWER'
-<relational operator> ::= < | ¾ | = | „ | > | ‚ |
+<arithmetic operator> ::= + | - | * | / | ï¿½ | 'POWER'
+<relational operator> ::= < | ï¿½ | = | ï¿½ | > | ï¿½ |
                           'LESS' | 'NOTGREATER' | 'EQUAL' | 'NOTLESS' | 'GREATER' | 'NOTEQUAL'
 <logical operator> ::= 'EQUIV' | 'IMPL' | 'OR' | 'AND' | 'NOT'
 <sequential operator> ::= 'GOTO' | 'IF' | 'THEN' | 'ELSE' | 'FOR' | 'DO'
