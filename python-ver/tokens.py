@@ -87,6 +87,7 @@ t_SEMICOLON = r";"
 t_COLON = r":"
 t_COMMA = r","
 t_DOT = r"\."
+t_DQUOTE = r"\""
 t_EREAL = r"E"    #1E-4
 t_UNDERLINE = r"_"
 
@@ -114,7 +115,7 @@ t_NOTEQUAL = r"\<\>"
 t_REAL = r"(\-)*[0-9]+\.[0-9]+"
 t_INTEGER = r"(\-)*[0-9]+"
 t_BOOLEAN = r"TRUE|FALSE"
-
+t_ANY_SYMBOL_SEQ_WO_QUOTE = r"[^\"]*"
 
 reserved_keywords = {
 #общее
@@ -167,6 +168,9 @@ reserved_keywords = {
     'notless':'NOTLESS',
     'greater':'GREATER',
     'notequal':'NOTEQUAL',
+
+    'true': 'TRUE',
+    'false': 'FALSE',
 }
 
 #общее
