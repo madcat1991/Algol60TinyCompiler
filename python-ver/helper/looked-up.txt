@@ -1,0 +1,121 @@
+program
+block
+unlabelled block
+block head
+compound statement
+unlabelled compound
+compound tail
+
+declaration
+type declaration
+local or own type
+type
+type list
+array declaration
+array list
+array segment
+array identifier
+bound pair list
+bound pair
+upper bound
+lower bound
+switch declaration
+switch identifier
+switch list
+procedure declaration
+procedure heading
+procedure identifier
+formal parameter part
+formal parameter list
+formal parameter
+value part
+specification part
+specifier
+identifier list
+procedure body
+
+statement
+unconditional statement
+basic statement
+label
+unlabelled basic statement
+assignment statement
+left part list
+left part
+go to statement
+designational expression
+simple designational expression
+switch designator
+dummy statement
+procedure statement
+actual parameter part
+actual parameter list
+parameter delimiter
+actual parameter
+conditional statement
+if statement
+if clause
+for statement
+for clause
+for list
+for list element
+
+expression
+arithmetic expression
+simple arithmetic expression
+adding operator
+term
+multiplying operator
+factor
+primary
+unsigned number
+decimal number
+unsigned integer
+decimal fraction
+exponential part
+integer
+Boolean expression
+simple Boolean
+implication
+Boolean term
+Boolean factor
+Boolean secondary
+Boolean primary
+relation
+relational operator
+function designator
+
+variable
+simple variable
+variable identifier
+subscripted variable
+subscript list
+subscript expression
+
+string
+open string
+proper string
+
+letter string
+
+identifier
+
+basic symbol
+
+letter -- letter_string, identifier, basic_symbol
+digit -- identifier, basic_symbol, unsigned integer
+logical value
+
+delimiter
+
+operator
+arithmetic operator
+relational operator
+logical operator
+sequential operator
+
+separator
+bracket
+declarator
+specificator
+

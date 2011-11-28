@@ -4,6 +4,7 @@ QUOTE = r'(\'|\`)'
 tokens = (
     #общее
     'IDENTIFIER',
+    'STRING',
 
     #разделители
     'ASSIGNMENT',
@@ -12,7 +13,6 @@ tokens = (
     'COMMA',
     'DOT',
     'EREAL',    #1E-4
-    'UNDERLINE',
     'STEP',
     'WHILE',
     'UNTIL',
@@ -27,9 +27,6 @@ tokens = (
     'RBBRACKET',    #]
 
     #деклараторы
-    'REAL',
-    'INTEGER',
-    'BOOLEAN',
     'PROCEDURE',
     'SWITCH',
 
@@ -41,9 +38,9 @@ tokens = (
     'TARRAY',
 
     #спецификатор
-    'LABEL',
-    'STRING',
-    'VALUE',
+    'TLABEL',
+    'TSTRING',
+    'TVALUE',
 
     #управление
     'GOTO',
@@ -79,6 +76,10 @@ tokens = (
     'NOTLESS',
     'GREATER',
     'NOTEQUAL',
+
+    #simple
+    'LETTER',
+    'DIGIT',
 )
 
 #разделители
@@ -87,9 +88,7 @@ t_SEMICOLON = r";"
 t_COLON = r":"
 t_COMMA = r","
 t_DOT = r"\."
-t_DQUOTE = r"\""
 t_EREAL = r"E"    #1E-4
-t_UNDERLINE = r"_"
 
 t_LCBRACKET = r"\("  #(
 t_RCBRACKET = r"\)"   #)
@@ -112,10 +111,8 @@ t_NOTLESS = r"\>\="
 t_GREATER = r"\>"
 t_NOTEQUAL = r"\<\>"
 
-t_REAL = r"(\-)*[0-9]+\.[0-9]+"
-t_INTEGER = r"(\-)*[0-9]+"
-t_BOOLEAN = r"TRUE|FALSE"
-t_ANY_SYMBOL_SEQ_WO_QUOTE = r"[^\"]*"
+t_LETTER = r"[a-zA-Z]"
+t_DIGIT = r"[0-9]"
 
 reserved_keywords = {
 #общее
@@ -139,9 +136,9 @@ reserved_keywords = {
     'switch':'SWITCH',
 
     #спецификатор
-    'label':'LABEL',
-    'string':'STRING',
-    'value':'VALUE',
+    'label':'TLABEL',
+    'string':'TSTRING',
+    'value':'TVALUE',
 
     #управление
     'goto':'GOTO',
@@ -175,7 +172,7 @@ reserved_keywords = {
 
 #общее
 def t_IDENTIFIER(t):
-    r"""[a-zA-Z]([a-zA-Z])*"""
+    r"""[a-zA-Z]([a-zA-Z0-9])*"""
     if t.value.lower() in reserved_keywords:
         t.type = reserved_keywords[t.value.lower()]
     return t
@@ -185,7 +182,7 @@ def t_COMMENT(t):
 
 #спецификатор
 def t_STRING(t):
-    r"""(\'([^\\\']|(\\.))*\')|(\`([^\\\']|(\\.))*\`)"""
+    r"""(\'([^\\\']|(\\.))*\')|(\`([^\\\`]|(\\.))*\`)|(\"([^\\\"]|(\\.))*\")"""
     escaped = 0
     str = t.value[1:-1]
     new_str = ""
@@ -210,7 +207,9 @@ def t_newline(t):
     r"""\n+"""
     t.lexer.lineno += len(t.value)
 
+
 t_ignore = ' \t'
+
 
 def t_error(t):
     print u"Недопустимый символ %s" % t.value[0]
