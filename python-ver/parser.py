@@ -10,6 +10,7 @@ from ply import yacc, lex
 from tokens import *
 from rules import *
 #from semantic import *
+from codegen.graph import graph
 
 
 def get_input(file=None):
@@ -37,7 +38,9 @@ def main(options=dict(), filename=None):
     data = get_input(filename)
     ast = yacc.parse(data, lexer=lex.lex(debug=1))
 
-    print ast
+    graph(ast)
+
+    #print ast
 
     #try:
     #    check(ast)
