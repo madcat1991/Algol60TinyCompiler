@@ -10,6 +10,7 @@ class Any(object):
     def __ne__(self, other):
         return False
 
+
 class Context(object):
     def __init__(self, name = None):
         self.variables = {}
@@ -35,9 +36,9 @@ functions = {
 }
 
 def pop():
-    count = context[-1].var_count
+    count = contexts[-1].var_count
     for v in count:
-        if not count[v]:
+        if count[v] == 0:
             print "Warning: variable %s was declared. but not used." % v
     contexts.pop()
 
@@ -51,39 +52,39 @@ def is_function_name(var):
             return True
     return False
 
-def has_var(varn):
-    var = varn.lower()
+def has_var(var_name):
+    var = var_name.lower()
     check_if_function(var)
     for c in contexts[::-1]:
         if c.has_var(var):
             return True
     return False
 
-def get_var(varn):
-    var = varn.lower()
+def get_var(var_name):
+    var = var_name.lower()
     for c in contexts[::-1]:
         if c.has_var(var):
             c.var_count[var] += 1
             return c.get_var(var)
-    raise  Exception, "Variable %s is referenced before assignment" % var
+    raise Exception, "Variable %s is referenced before assignment" % var
 
-def set_var(varn, typ):
-    var = varn.lower()
+def set_var(var_name, var_type):
+    var = var_name.lower()
     check_if_function(var)
     now = contexts[-1]
     if now.has_var(var):
         raise Exception, "Variable %s already defined" % var
     else:
-        now.set_var(var, typ.lower())
+        now.set_var(var, var_type.lower())
 
 def get_params(node):
     if node.type == "formal_parameter":
-        return [check_if_function(node.args[0])]
+        return [check(node.args[0])]
     else:
-        l = list()
+        ls = list()
         for i in node.args:
-            l.extend(get_params(i))
-        return l
+            ls.extend(get_params(i))
+        return ls
 
 def flatten(n):
     if not is_node(n):
@@ -91,13 +92,37 @@ def flatten(n):
     if not n.type.endswith("_list"):
         return [n]
     else:
-        l = list()
+        ls = list()
         for i in n.args:
-            l.extend(flatten(i))
-        return l
+            ls.extend(flatten(i))
+        return ls
 
 def is_node(node):
     return hasattr(node, "type")
+
+def get_type(node):
+    if node.type == "left_part_list":
+        left_parts = flatten(node)
+        first_var_type = None
+        for part in left_parts:
+            if is_function_name(part.args[0].args[0]):
+                var_type = functions[varn][0]
+            else:
+                if not has_var(part.args[0].args[0]):
+                    raise Exception, "Variable %s not declared" % part.args[0].args[0]
+                var_type = get_var(varn)
+
+            if not first_var_type:
+                first_var_type = var_type
+            elif var_type != first_var_type:
+                raise Exception, "Variable %s type is not %s" % (part.args[0].args[0], first_var_type)
+        return first_var_type
+    # грязный хак
+    elif node.type == "arithmetic_expression":
+        return ["INTEGER", "REAL"]
+    elif node.type == "boolean_expression":
+        return ["BOOLEAN"]
+
 
 def check(node):
     if not is_node(node):
@@ -109,70 +134,76 @@ def check(node):
     else:
         if node.type in ["identifier"]:
             return node.args[0]
-        elif node.type in ["var_list", "statement_list", "function_list"]:
+        elif node.type in ["identifier_list", "array_list", "bound_pair_list", "switch_list", "formal_parameter_list",
+                           "left_part_list", "actual_parameter_list", "for_list", "for_list_element", "subscript_list",
+                           "type_list",]:
             return check(node.args)
-        elif node.type in ["program", "block"]:
+        elif node.type in ["program", "block", "statement"]:
+            #только ли тут?
             contexts.append(Context())
             check(node.args)
             pop()
-        elif node.type in "var":
-            var_name = node.args[0].args[0]
-            var_type = node.args[1].args[0]
-            set_var(var_name, var_type)
-        elif node.type in ["function", "procedure"]:
-            head = node.args[0]
-            name = head.args[0].args[0].lower()
+        elif node.type in "type_declaration":
+            var_type = node.args[0].args[0]
+            i = 1
+            while i < len(node.args):
+                var_name = node.args[i].args[0]
+                set_var(var_name, var_type)
+                i += 1
+        elif node.type in ["procedure_declaration"]:
+            type = None
+            if len(node.args) > 2:
+                type = node.args[0].args[0]
+                heading = node.args[1]
+            else:
+                heading = node.args[0]
+
+            name = heading.args[0].args[0].lower()
             check_if_function(name)
 
-            if len(head.args) == 1:
-                args = list()
-            else:
-                args = flatten(head.args[1])
-                args = map(lambda x: (x.args[0].args[0], x.args[1].args[0]), args)
+            args = list()
+            value_part = list()
+            specifiers = list()
+            if len(heading.args) > 1:
+                i = 1
+                while i < len(heading.args):
+                    if heading.args[i].type == "formal_parameter_type":
+                        formal_parameter = heading.args[i]
+                        if len(formal_parameter.args) > 0:
+                            args = flatten(formal_parameter.args[0])
+                    elif heading.args[i].type == "value_part":
+                        value_part = heading.args[i]
+                        if len(value_part.args) > 0:
+                            value_part = flatten(value_part.args[0])
+                    elif heading.args[i].type == "specification_part":
+                        specification_part = heading.args[i]
+                        if len(specification_part.args) > 0:
+                            specifiers = flatten(specification_part)
+                    i += 1
 
-            if node.type == "procedure":
-                rettype = "void"
-            else:
-                rettype = head.args[-1].args[0].lower()
-
-            functions[name] = (rettype, args)
-
-            contexts.append(Context(name))
-            for i in args:
-                set_var(i[0], i[1])
-            check(node.args[1])
+            functions[name] = (type, args, value_part, specifiers)
+            check(body)
             pop()
-        elif node.type in ["function_call", "function_call_inline"]:
+        elif node.type in ["procedure_statement", "function_designator"]:
             fname = node.args[0].args[0].lower()
             if fname not in functions:
                 raise Exception, "Function %s is not defined" % fname
             if len(node.args) > 1:
                 args = get_params(node.args[1])
             else:
-                args = []
-            rettype, vargs = functions[fname]
+                args = list()
+            type, vargs, value_part, specifiers = functions[fname]
 
             if len(args) != len(vargs):
                 raise  Exception, "Function %s is expecting %d parameters and got %d" % (fname, len(vargs), len(args))
-            else:
-                for i in range(len(vargs)):
-                    if vargs[i][1] != args[i]:
-                        raise  Exception, "Parameter #%d passed to function %s should be of type %s and not %s" % \
-                                          (i + 1, fname, vargs[i][1], args[i])
-            return rettype
+            return type
 
-        elif node.type == "assign":
-            varn = check(node.args[0]).lower()
-            if is_function_name(varn):
-                vartype = functions[varn][0]
-            else:
-                if not has_var(varn):
-                    raise Exception, "Variable %s not declared" % varn
-                vartype = get_var(varn)
-            assgntype = check(node.args[1])
+        elif node.type == "assignment_statement":
+            left_part = get_type(node.args[0])
+            right_part = get_type(node.args[1])
 
-            if vartype != assgntype:
-                raise Exception, "Variable %s is of type %s and does not support %s" % (varn, vartype, assgntype)
+            if left_part not in right_part:
+                raise Exception, "Variable(s) in left part is of type %s and does not support %s" % (left_part, right_part)
             elif node.type == "and_or":
                 op = node.args[0].args[0]
                 for i in range(1,2):

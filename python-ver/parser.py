@@ -9,7 +9,7 @@ from ply import yacc, lex
 
 from tokens import *
 from rules import *
-#from semantic import *
+from semantic import *
 from codegen.graph import graph
 
 
@@ -31,16 +31,22 @@ def get_input(file=None):
     return data
 
 def main(options=dict(), filename=None):
-    #logger = yacc.NullLogger()
-    #yacc.yacc(debug=logger, errorlog=logger)
+    logger = yacc.NullLogger()
+    yacc.yacc(debug=logger, errorlog=logger)
     yacc.yacc()
 
     data = get_input(filename)
     ast = yacc.parse(data, lexer=lex.lex(debug=1))
 
-    graph(ast)
+    if options.graph:
+        graph(ast)
 
-    #print ast
+    try:
+        check(ast)
+    except Exception, e:
+        print "Error: %s", e
+        sys.exit()
+
 
     #try:
     #    check(ast)

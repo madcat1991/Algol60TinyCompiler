@@ -39,3 +39,9 @@ http://gnuu.org/2009/09/18/writing-your-own-toy-compiler/all/1/
  
  Для запуска flex:
  > flex tokens.l
+
+Python замечательнейший язык! У питона есть модули PYL и llvm-py, которые есть не что иное, как lex, yacc и llvm обернутые для Python.
+Пример создания простого компилятора для Паскаля:
+ - https://github.com/alcides/pascal-in-python/
+
+Берем за основу и создаем по образу и подобию.
