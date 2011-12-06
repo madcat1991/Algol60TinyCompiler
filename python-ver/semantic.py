@@ -1,6 +1,8 @@
 #coding: utf-8
 __author__ = 'tural'
 
+#на самом деле почти все проверяется правилами синтаксиса, так что нефиг придумывать
+
 types = ['integer', 'real', 'string', 'boolean']
 
 
@@ -31,16 +33,17 @@ class Context(object):
 contexts = list()
 
 functions = {
-    'write':('integer', [("a", Any())]),
-    'writeln':('integer', [("a", Any())]),
+    'write':('integer', [Any()], [], []),
+    'writeln':('integer', [Any()], [], []),
 }
 
 def pop():
-    count = contexts[-1].var_count
-    for v in count:
-        if count[v] == 0:
-            print "Warning: variable %s was declared. but not used." % v
-    contexts.pop()
+    if len(contexts) > 0:
+        count = contexts[-1].var_count
+        for v in count:
+            if count[v] == 0:
+                print "Warning: variable %s was declared. but not used." % v
+        contexts.pop()
 
 def check_if_function(var):
     if var.lower() in functions and not is_function_name(var.lower()):
@@ -90,7 +93,7 @@ def flatten(n):
     if not is_node(n):
         return [n]
     if not n.type.endswith("_list"):
-        return [n]
+        return list(n.args)
     else:
         ls = list()
         for i in n.args:
@@ -105,23 +108,23 @@ def get_type(node):
         left_parts = flatten(node)
         first_var_type = None
         for part in left_parts:
-            if is_function_name(part.args[0].args[0]):
+            if is_function_name(part.args[0]):
                 var_type = functions[varn][0]
             else:
-                if not has_var(part.args[0].args[0]):
-                    raise Exception, "Variable %s not declared" % part.args[0].args[0]
-                var_type = get_var(varn)
+                if not has_var(part.args[0]):
+                    raise Exception, "Variable %s not declared" % part.args[0]
+                var_type = get_var(part.args[0])
 
             if not first_var_type:
                 first_var_type = var_type
             elif var_type != first_var_type:
-                raise Exception, "Variable %s type is not %s" % (part.args[0].args[0], first_var_type)
+                raise Exception, "Variable %s type is not %s" % (part.args[0], first_var_type)
         return first_var_type
     # грязный хак
     elif node.type == "arithmetic_expression":
-        return ["INTEGER", "REAL"]
+        return ["integer", "real"]
     elif node.type == "boolean_expression":
-        return ["BOOLEAN"]
+        return ["boolean"]
 
 
 def check(node):
@@ -132,34 +135,50 @@ def check(node):
         else:
             return  node
     else:
+        #обработка идентификатора
         if node.type in ["identifier"]:
             return node.args[0]
+
+        #работа со списками
         elif node.type in ["identifier_list", "array_list", "bound_pair_list", "switch_list", "formal_parameter_list",
                            "left_part_list", "actual_parameter_list", "for_list", "for_list_element", "subscript_list",
-                           "type_list",]:
+                           "type_list","unlabeled_block","block_head", "compound_statement", "compound_tail",
+                           "declaration", "formal_parameter_part", "unconditional_statement", "basic_statement",
+                           "label", "unlabelled_basic_statement", "designational_expression", "simple_designational_expression",
+                           "conditional_statement","actual_parameter_part", "arithmetic_expression", "boolean_expression"]:
             return check(node.args)
+
+        #создание контектсов. На мой взгляд programm - лишний
         elif node.type in ["program", "block", "statement"]:
-            #только ли тут?
             contexts.append(Context())
             check(node.args)
             pop()
-        elif node.type in "type_declaration":
-            var_type = node.args[0].args[0]
-            i = 1
-            while i < len(node.args):
-                var_name = node.args[i].args[0]
-                set_var(var_name, var_type)
-                i += 1
+
+        #добавляем название переменных и их типы из type_declaration
+        elif node.type == "type_declaration":
+            local_or_own_type = node.args[0]
+            if len(local_or_own_type.args) == 1:
+                var_type = local_or_own_type.args[0].args[0]
+            else:
+                var_type = local_or_own_type.args[0].args[0] + local_or_own_type.args[0].args[1]
+
+            type_list = flatten(node.args[1])
+            for var_name in type_list:
+                set_var(var_name.args[0], var_type)
+
+        #объявление процедур. Храним название процедур(перегрузку запрещаем)
         elif node.type in ["procedure_declaration"]:
             type = None
             if len(node.args) > 2:
                 type = node.args[0].args[0]
                 heading = node.args[1]
+                body = node.args[2]
             else:
                 heading = node.args[0]
+                body = node.args[1]
 
-            name = heading.args[0].args[0].lower()
-            check_if_function(name)
+            proc_name = heading.args[0].args[0].lower()
+            check_if_function(proc_name)
 
             args = list()
             value_part = list()
@@ -167,29 +186,35 @@ def check(node):
             if len(heading.args) > 1:
                 i = 1
                 while i < len(heading.args):
-                    if heading.args[i].type == "formal_parameter_type":
-                        formal_parameter = heading.args[i]
-                        if len(formal_parameter.args) > 0:
-                            args = flatten(formal_parameter.args[0])
-                    elif heading.args[i].type == "value_part":
-                        value_part = heading.args[i]
-                        if len(value_part.args) > 0:
-                            value_part = flatten(value_part.args[0])
-                    elif heading.args[i].type == "specification_part":
-                        specification_part = heading.args[i]
-                        if len(specification_part.args) > 0:
-                            specifiers = flatten(specification_part)
+                    if heading.args[i] is not None:
+                        if heading.args[i].type == "formal_parameter_part":
+                            if len(heading.args[i].args) > 0:
+                                formal_parameter = heading.args[i].args[0]
+                                if len(formal_parameter.args) > 0:
+                                    args = flatten(formal_parameter.args[0])
+                        elif heading.args[i].type == "value_part":
+                            value_part = heading.args[i]
+                            if len(value_part.args) > 0:
+                                value_part = flatten(value_part.args[0])
+                        elif heading.args[i].type == "specification_part":
+                            specification_part = heading.args[i]
+                            if len(specification_part.args) > 0:
+                                specifiers = flatten(specification_part)
                     i += 1
 
-            functions[name] = (type, args, value_part, specifiers)
+            functions[proc_name] = (type, args, value_part, specifiers)
             check(body)
             pop()
+
+
+        #вызов функции
+        #TODO работает на честном слове(т.е не работает)
         elif node.type in ["procedure_statement", "function_designator"]:
             fname = node.args[0].args[0].lower()
             if fname not in functions:
                 raise Exception, "Function %s is not defined" % fname
             if len(node.args) > 1:
-                args = get_params(node.args[1])
+                args = flatten(node.args[1].args[0])[0].args
             else:
                 args = list()
             type, vargs, value_part, specifiers = functions[fname]
@@ -198,84 +223,36 @@ def check(node):
                 raise  Exception, "Function %s is expecting %d parameters and got %d" % (fname, len(vargs), len(args))
             return type
 
+        #присваивание
         elif node.type == "assignment_statement":
             left_part = get_type(node.args[0])
             right_part = get_type(node.args[1])
 
             if left_part not in right_part:
                 raise Exception, "Variable(s) in left part is of type %s and does not support %s" % (left_part, right_part)
-            elif node.type == "and_or":
-                op = node.args[0].args[0]
-                for i in range(1,2):
-                    a = check(node.args[i])
-                    if a != "boolean":
-                        raise Exception, "%s requires a boolean. Got %s instead." % (op, a)
 
-            elif node.type == "op":
-                op = node.args[0].args[0]
-                vt1 = check(node.args[1])
-                vt2 = check(node.args[2])
+            elif node.type == "if_clause" and get_type(node.args[0]) != "boolean":
+                raise Exception, "If requires an boolean expression"
 
-                if vt1 != vt2:
-                    raise Exception, "Arguments of operation '%s' must be of the same type. Got %s and %s" % (op, vt1, vt2)
-
-                if op in ['mod', 'div'] and vt1 != "integer":
-                    raise Exception, "Operation %s requires integers" % op
-
-                if op == "/" and vt1 != "real":
-                    raise Exception, "Operation %s requires real" % op
-
-                if op in ['=', '<=', '>=', '<', '>', '<>']:
-                    return 'boolean'
-                else:
-                    return vt1
-
-            elif node.type in ['if', 'while', 'repeat']:
-                if node.type == 'repeat':
-                    c = 1
-                else:
-                    c = 0
-                t = check(node.args[c])
-                if t != 'boolean':
-                    raise Exception, "%s condition requires a boolean. Got %s instead." % (node.type, t)
-
-                #body
-                check(node.args[1-c])
-
-                #else
-                if len(node.args) > 2:
-                    check(node.args[2])
-
-            elif node.type == "for":
+            elif node.type == "for_clause":
                 contexts.append(Context())
-                v = node.args[0].args[0].args[0].lower()
-                set_var(v, 'INTEGER')
+                variable = node.args[0].lower()
+                set_var(variable, 'INTEGER')
 
-                st = node.args[0].args[1].args[0].type.lower()
-                if st != 'integer':
-                    raise Exception, "For requires an integer as a starting value"
-
-                fv = node.args[2].args[0].type.lower()
-                if fv != 'integer':
-                    raise Exception, "For requires an integer as a final value"
-
-                check(node.args[3])
+                for_list = node.args[1]
+                elements = flatten(for_list)
+                for el in elements:
+                    #arithmetic_expression
+                    if get_type(el.args[0]) != "INTEGER":
+                        raise Exception, "For requires an integer as a starting value"
+                    #arithmetic_expression + WHILE
+                    if len(el.args) == 2 and get_type(el.args[1]) != "boolean":
+                        raise Exception, "For requires an boolean expression if you use WHILE"
+                    #arithmetic_expression + STEP
+                    elif len(el.args) == 3 and (get_type(el.args[1]) != "integer" or get_type(el.args[2]) != "integer"):
+                        raise Exception, "For requires arithmetic expressions if you use STEP..UNTIL construction"
                 pop()
 
-
-            elif node.type == 'not':
-                return check(node.args[0])
-
-            elif node.type == "element":
-                if node.args[0].type == 'identifier':
-                    return get_var(node.args[0].args[0])
-                elif node.args[0].type == "function_call_inline":
-                    return check(node.args[0])
-                else:
-                    if node.args[0].type in types:
-                        return node.args[0].type
-                    else:
-                        return check(node.args[0])
 
             else:
                 print "semantic missing:", node.type

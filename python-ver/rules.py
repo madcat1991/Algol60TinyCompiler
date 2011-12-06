@@ -75,7 +75,7 @@ def p_local_or_own_type(t):
     if len(t) == 2:
         t[0] = Node("local_or_own_type", t[1])
     else:
-        t[0] = Node("local_or_own_type", t[2])
+        t[0] = Node("local_or_own_type", t[1], t[2])
 
 def p_type(t):
     r"""type    : TREAL
@@ -284,7 +284,7 @@ def p_designational_expression(t):
     r"""designational_expression    : simple_designational_expression
                                     | if_clause simple_designational_expression ELSE designational_expression"""
     if len(t) == 2:
-        t[0] = Node("designational_expression", t[2])
+        t[0] = Node("designational_expression", t[1])
     else:
         t[0] = Node("designational_expression", t[1], t[2], t[4])
 
@@ -536,7 +536,7 @@ def p_boolean_secondary(t):
     if len(t) == 2:
         t[0] = Node("boolean_secondary", t[1])
     else:
-        t[0] = Node("boolean_secondary", t[2])
+        t[0] = Node("boolean_secondary", t[1], t[2])
 
 def p_boolean_primary(t):
     r"""boolean_primary : logical_value

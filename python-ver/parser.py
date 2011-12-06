@@ -25,7 +25,7 @@ def get_input(file=None):
 #                data += raw_input() + "\n"
 #            except :
 #                break
-    f = open("../example.alg", "r")
+    f = open("../common/example.alg", "r")
     data = f.read()
     f.close()
     return data
@@ -38,7 +38,7 @@ def main(options=dict(), filename=None):
     data = get_input(filename)
     ast = yacc.parse(data, lexer=lex.lex(debug=1))
 
-    if options.graph:
+    if options.has_key("graph"):
         graph(ast)
 
     try:

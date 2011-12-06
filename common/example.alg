@@ -22,6 +22,7 @@ BEGIN
                 END;
             END;
         END;
-        WRITE( 'result', res )
+        WRITE( 'result', res );
     END;
+    fibonachi(5);
 END
