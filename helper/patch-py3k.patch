@@ -1,0 +1,252 @@
+Index: _core.c
+===================================================================
+--- _core.c	(revision 85)
++++ _core.c	(working copy)
+@@ -91,10 +91,10 @@
+     (void) LLVMVerifyModule(m, LLVMReturnStatusAction, &outmsg);
+ 
+     if (outmsg) {
+-        ret = PyString_FromString(outmsg);
++        ret = PyUnicode_FromString(outmsg);
+         LLVMDisposeMessage(outmsg);
+     } else {
+-        ret = PyString_FromString("");
++        ret = PyUnicode_FromString("");
+     }
+ 
+     return ret;
+@@ -104,24 +104,17 @@
+     char **OutMessage);
+ 
+ static PyObject *
+-_get_asm_or_bc(asm_or_bc_fn_t fn, PyObject *self, PyObject *args)
++_get_asm_or_bc(asm_or_bc_fn_t fn, PyObject *self, PyObject *args, char *start, Py_ssize_t len)
+ {
+-    PyObject *obj, *ret;
+-    Py_ssize_t len;
+-    char *start, *outmsg;
++    PyObject *ret;
++    char *outmsg;
+     LLVMModuleRef m;
+ 
+-    if (!PyArg_ParseTuple(args, "O", &obj))
+-        return NULL;
+-
+-    start = PyString_AsString(obj);
+-    len = PyString_Size(obj);
+-
+     outmsg = 0;
+     m = fn(start, len, &outmsg);
+     if (!m) {
+         if (outmsg) {
+-            ret = PyString_FromString(outmsg);
++            ret = PyUnicode_FromString(outmsg);
+             LLVMDisposeMessage(outmsg);
+             return ret;
+         } else {
+@@ -135,13 +128,26 @@
+ static PyObject *
+ _wLLVMGetModuleFromAssembly(PyObject *self, PyObject *args)
+ {
+-    return _get_asm_or_bc(LLVMGetModuleFromAssembly, self, args);
++    Py_ssize_t len;
++    char *start;
++    if (!PyArg_ParseTuple(args, "s#", &start, &len))
++        return NULL;
++    return _get_asm_or_bc(LLVMGetModuleFromAssembly, self, args, start, len);
+ }
+ 
+ static PyObject *
+ _wLLVMGetModuleFromBitcode(PyObject *self, PyObject *args)
+ {
+-    return _get_asm_or_bc(LLVMGetModuleFromBitcode, self, args);
++    Py_ssize_t len;
++    char *start;
++#if PY_MAJOR_VERSION >= 3
++    if (!PyArg_ParseTuple(args, "y#", &start, &len))
++        return NULL;
++#else
++    if (!PyArg_ParseTuple(args, "s#", &start, &len))
++        return NULL;
++#endif
++    return _get_asm_or_bc(LLVMGetModuleFromBitcode, self, args, start, len);
+ }
+ 
+ static PyObject *
+@@ -158,7 +164,11 @@
+     if (!(bytes = LLVMGetBitcodeFromModule(m, &len)))
+         Py_RETURN_NONE;
+ 
++#if PY_MAJOR_VERSION >= 3
++    ret = PyBytes_FromStringAndSize((char *)bytes, (Py_ssize_t)len);
++#else /* if PY_MAJOR_VERSION >= 3 */
+     ret = PyString_FromStringAndSize((char *)bytes, (Py_ssize_t)len);
++#endif /* if PY_MAJOR_VERSION >= 3 */
+     LLVMDisposeMessage((char *)bytes);
+     return ret;
+ }
+@@ -178,10 +188,10 @@
+ 
+     if (!LLVMLinkModules(dest, src, &errmsg)) {
+         if (errmsg) {
+-            ret = PyString_FromString(errmsg);
++            ret = PyUnicode_FromString(errmsg);
+             LLVMDisposeMessage(errmsg);
+         } else {
+-            ret = PyString_FromString("Link error");
++            ret = PyUnicode_FromString("Link error");
+         }
+         return ret;
+     }
+@@ -329,14 +339,17 @@
+ _wLLVMValueGetUses(PyObject *self, PyObject *args)
+ {
+     LLVMValueRef value;
++    LLVMValueRef *uses;
++    PyObject *list;
++    unsigned n;
+ 
+     if (!(value = (LLVMValueRef)get_object_arg(args)))
+         return NULL;
+ 
+-    LLVMValueRef *uses = 0;
+-    unsigned n = LLVMValueGetUses(value, &uses);
++    uses = 0;
++    n = LLVMValueGetUses(value, &uses);
+ 
+-    PyObject *list = make_list_from_LLVMValueRef_array(uses, n);
++    list = make_list_from_LLVMValueRef_array(uses, n);
+     if (n > 0)
+         LLVMDisposeValueRefArray(uses);
+ 
+@@ -736,7 +749,7 @@
+     if (!LLVMCreateMemoryBufferWithContentsOfFile(path, &ref, &outmsg)) {
+         ret = ctor_LLVMMemoryBufferRef(ref);
+     } else {
+-        ret = PyString_FromString(outmsg);
++        ret = PyUnicode_FromString(outmsg);
+         LLVMDisposeMessage(outmsg);
+     }
+ 
+@@ -753,7 +766,7 @@
+     if (!LLVMCreateMemoryBufferWithSTDIN(&ref, &outmsg)) {
+         ret = ctor_LLVMMemoryBufferRef(ref);
+     } else {
+-        ret = PyString_FromString(outmsg);
++        ret = PyUnicode_FromString(outmsg);
+         LLVMDisposeMessage(outmsg);
+     }
+ 
+@@ -865,7 +878,7 @@
+         return NULL;
+ 
+     tdrep = LLVMCopyStringRepOfTargetData(td);
+-    ret = PyString_FromString(tdrep);
++    ret = PyUnicode_FromString(tdrep);
+     LLVMDisposeMessage(tdrep);
+     return ret;
+ }
+@@ -919,7 +932,7 @@
+         error = LLVMCreateJITCompiler(&ee, mp, 1 /*fast*/, &outmsg);
+ 
+     if (error) {
+-        ret = PyString_FromString(outmsg);
++        ret = PyUnicode_FromString(outmsg);
+         LLVMDisposeMessage(outmsg);
+     } else {
+         ret = ctor_LLVMExecutionEngineRef(ee);
+@@ -1100,7 +1113,7 @@
+     outmsg = 0;
+     if (!LLVMLoadLibraryPermanently(filename, &outmsg)) {
+         if (outmsg) {
+-            ret = PyString_FromString(outmsg);
++            ret = PyUnicode_FromString(outmsg);
+             LLVMDisposeMessage(outmsg);
+             return ret;
+         }
+@@ -1596,11 +1609,49 @@
+     { NULL }
+ };
+ 
++
++#if PY_MAJOR_VERSION >= 3
++struct module_state {
++    PyObject *error;
++};
++
++
++static int core_traverse(PyObject *m, visitproc visit, void *arg) {
++    /* Py_VISIT(GETSTATE(m)->error); */
++    return 0;
++}
++
++static int core_clear(PyObject *m) {
++    /* Py_CLEAR(GETSTATE(m)->error); */
++    return 0;
++}
++
++static struct PyModuleDef moduledef = {
++        PyModuleDef_HEAD_INIT,
++        "_core",
++        NULL,
++        sizeof(struct module_state),
++        core_methods,
++        NULL,
++        core_traverse,
++        core_clear,
++        NULL
++};
++
++
++PyObject *
++PyInit__core(void)
++#else /* if PY_MAJOR_VERSION >= 3 */
+ PyMODINIT_FUNC
+ init_core(void)
++#endif /* if PY_MAJOR_VERSION >= 3 */
+ {
+     LLVMLinkInJIT();
+     LLVMLinkInInterpreter();
+     LLVMInitializeNativeTarget();
++#if PY_MAJOR_VERSION >= 3
++    return PyModule_Create(&moduledef);
++#else /* if PY_MAJOR_VERSION >= 3 */
+     Py_InitModule("_core", core_methods);
++#endif /* if PY_MAJOR_VERSION >= 3 */
+ }
+Index: wrap.c
+===================================================================
+--- wrap.c	(revision 85)
++++ wrap.c	(working copy)
+@@ -29,6 +29,9 @@
+  */
+ 
+ #include "wrap.h"
++#if PY_MAJOR_VERSION >= 3
++# define PyInt_FromLong PyLong_FromLong
++#endif /* if PY_MAJOR_VERSION >= 3 */
+ 
+ 
+ /*===----------------------------------------------------------------------===*/
+Index: wrap.h
+===================================================================
+--- wrap.h	(revision 85)
++++ wrap.h	(working copy)
+@@ -354,7 +354,7 @@
+     if (!(arg1 = ( intype1 )get_object_arg(args)))      \
+         return NULL;                                    \
+                                                         \
+-    return PyString_FromString( func (arg1));           \
++    return PyUnicode_FromString( func (arg1));          \
+ }
+ 
+ /**
+@@ -954,7 +954,7 @@
+         return NULL;                                                \
+                                                                     \
+     val = func (arg1);                                              \
+-    ret = PyString_FromString(val);                                 \
++    ret = PyUnicode_FromString(val);                                \
+     LLVMDisposeMessage(val);                                        \
+     return ret;                                                     \
+ }

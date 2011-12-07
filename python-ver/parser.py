@@ -11,6 +11,7 @@ from tokens import *
 from rules import *
 from semantic import *
 from codegen.graph import graph
+from codegen.builder import *
 
 
 def get_input(file=None):
@@ -44,15 +45,18 @@ def main(options=dict(), filename=None):
     try:
         check(ast)
     except Exception, e:
-        print "Error: %s", e
+        print "Error in semantic: %s", e
         sys.exit()
 
+    try:
+        o = Writer()(ast)
+    except Exception, e:
+        print "Error in builder: %s", e
+        sys.exit()
 
-    #try:
-    #    check(ast)
-    #except Exception, e:
-    #    print "Error %s" % e
-    #    sys.exit()
+    if not hasattr(o, "ptr"):
+        print "Error compiling"
+        sys.exit()
         
 if __name__ == "__main__":
     main()
