@@ -1,3 +1,4 @@
+#coding: utf-8
 import sys
 
 from llvm import *
@@ -8,7 +9,6 @@ from helpers import *
 from ast import Node
 from context import Context
 
-# http://mdevan.nfshost.com/llvm-py/userguide.html#install
 
 
 class Writer(object):
@@ -16,6 +16,17 @@ class Writer(object):
         self.functions={}
         self.contexts = []
         self.counter = 0
+
+    def flatten(self, n):
+        if not n.__class__ == Node:
+            return [n]
+        if not n.type.endswith("_list"):
+            return list(n.args)
+        else:
+            ls = list()
+            for i in n.args:
+                ls.extend(self.flatten(i))
+            return ls
 
     def get_var(self,name):
         for c in self.contexts[::-1]:
@@ -43,16 +54,33 @@ class Writer(object):
     def descend(self,node):
         return self(node)
 
-    def __call__(self,ast):
+    def term(self, node):
+        if len(node.args) == 1:
+            return self.factor(node.args[0])
+        else:
+            builder = self.get_builder()
+            if node.args[1].args[0] == '*':
+                return builder.mul(self.descend(node.args[0]), self.factor(node.args[0]))
+            elif node.args[1].args[0] == '/':
+                return builder.fdiv(self.descend(node.args[0]), self.factor(node.args[0]))
+            elif node.args[1].args[0] == '%':
+                return builder.urem(self.descend(node.args[0]), self.factor(node.args[0]))
 
+    def factor(self, node):
+        if len(node.args) == 1:
+            if node.type == 'primary':
+                return self.descend(node.args[0])
+            else:
+                return self.factor(node.args[0])
+        else:
+            raise Exception("Power operation not realized")
+
+    def __call__(self,ast):
         if ast.__class__ != Node:
             return ast
 
         if ast.type == "program":
-            mod_name = self.descend(ast.args[0])
-            if not mod_name:
-                mod_name = "pascal_program"
-
+            mod_name = "algol_program"
             self.module = Module.new(mod_name)
             stdio = add_stdio(self.module)
             for f in stdio:
@@ -63,126 +91,259 @@ class Writer(object):
             block = Builder.new(main.append_basic_block("entry"))
 
             self.contexts.append(Context(main,block))
-            self.descend(ast.args[1])
+            self.descend(ast.args[0])
 
             self.get_builder().ret(c_int(0))
 
             return self.module
 
-        elif ast.type == "block":
-
-            self.descend(ast.args[0]) # Var
-            self.descend(ast.args[1]) # Function def
-            self.descend(ast.args[2]) # Statement
-
-        elif ast.type in ["var_list","statement_list","function_list"]:
+        elif ast.type in ["block", "statement", "array_list", "bound_pair_list", "switch_list", "formal_parameter_list",
+                           "for_list", "for_list_element", "subscript_list",
+                           "type_list","unlabeled_block","block_head", "compound_statement", "compound_tail",
+                           "declaration", "formal_parameter_part", "unconditional_statement", "basic_statement",
+                           "unlabelled_basic_statement", "boolean_expression"]:
             for son in ast.args:
                 self.descend(son)
 
-        elif ast.type == "var":
-            var_name = self.descend(ast.args[0])
-            var_type_name = self.descend(ast.args[1])
+        elif ast.type in ["expression", "label"]:
+            return self.descend( ast.args[0])
+
+        elif ast.type == "designational_expression":
+            if len(ast.args) == 1:
+                return self.descend( ast.args[0])
+
+        elif ast.type == "simple_designational_expression":
+            return self.descend( ast.args[0])
+
+        elif ast.type == "actual_parameter_part":
+            return self.descend(ast.args[0])
+
+        elif ast.type == "actual_parameter_list":
             builder = self.get_builder()
-            v = var_init(builder, var_name, var_type_name)
-            self.set_var(var_name,v)
+            if len(ast.args) == 1:
+                var = self.descend(ast.args[0])
+                if isinstance(var, str):
+                    return [builder.load(self.get_var(var))]
+                return [var]
+            else:
+                ls = list()
+                ls.extend(self.descend(ast.args[0]))
+                var = self.get_var( self.descend(ast.args[2]) )
+                ls.append(var)
+                return ls
 
-        elif ast.type == "type":
-            return str(ast.args[0]).upper()
+        elif ast.type == "actual_parameter":
+            return self.descend(ast.args[0])
 
-        elif ast.type == "identifier":
-            return str(ast.args[0]).lower()
-
-        elif ast.type in ["function_call","function_call_inline"]:
+        elif ast.type in ["function_designator", "procedure_statement"]:
             builder = self.get_builder()
-
             function_name = self.descend(ast.args[0])
 
-            arguments = []            
-            if len(ast.args) > 1:
-                if ast.args[1]:
-                    arguments = self.descend(ast.args[1])
-
-            if function_name in ['write','writeln']:
-                if str(arguments[0].type) == 'double':
-                    function_name += "real"
-                elif str(arguments[0].type) == 'i32':
-                    function_name += "int"
-
+            arguments = list()
+            if ast.args[1]:
+                arguments = self.descend(ast.args[1])
 
             function = self.module.get_function_named(function_name)
-            return builder.call(function,arguments)
+            return builder.call(function, arguments)
 
-        elif ast.type == "parameter_list":
-            l = []
-            l.extend(self.descend(ast.args[0]))
-            l.extend(self.descend(ast.args[1]))
-            return l
+        elif ast.type == "boolean_expression":
+            pass
 
-        elif ast.type == "parameter":
-            c = ast.args[0]
-            if c.type == "identifier":
-                label = self.descend(ast.args[0])
-                c = self.get_var(label)
+        elif ast.type == "if_statement":
+            return self.descend(ast.args[0].args[0]), self.descend(ast.args[1])
+
+        elif ast.type == "conditional_statement":
+            #if
+            if ast.args[0].type == 'if_clause':
+                now = self.get_function()
+                builder = self.get_builder()
+                cond, statement = self.descend(ast.args[0])
+                self.counter += 1
+                tail = now.append_basic_block("tail_%d" % self.counter)
+
+                # then
+                then_block = now.append_basic_block("if_%d" % self.counter)
+                self.contexts.append( Context(then_block)  )
+                b = self.get_builder()
+                b.branch(tail)
+                b.position_at_end(tail)
+                self.contexts.pop()
+
+                #else
+                else_block = None
+                if len(ast.args) == 2 and ast.args[1].type == "statement":
+                    else_block = now.append_basic_block("else_%d" % self.counter)
+                    self.contexts.append( Context(else_block)  )
+                    self.descend(ast.args[1])
+                    b = self.get_builder()
+                    b.branch(tail)
+                    b.position_at_end(tail)
+                    self.contexts.pop()
+
+                builder.cbranch(cond,then_block,else_block)
+                self.contexts[-1].builder = Builder.new(tail)
+
+        elif ast.type == "left_part_list":
+            if len(ast.args) == 1:
+                return [self.descend( ast.args[0] )]
             else:
-                c = self.descend(ast.args[0])
-            return [c]
+                ls = list()
+                ls.extend( self.descend(ast.args[0]) )
+                ls.append( self.descend(ast.args[1]) )
 
-        elif ast.type == "assign":
+        elif ast.type == "left_part":
+            return self.descend(ast.args[0])
+
+        elif ast.type == "variable":
+            return self.get_var( self.descend(ast.args[0]) )
+
+        elif ast.type == "simple_variable":
+            return self.descend(ast.args[0])
+
+        elif ast.type == "arithmetic_expression":
+            if len(ast.args) == 1:
+                return self.descend(ast.args[0])
+
+        elif ast.type == "simple_arithmetic_expression":
+            if len(ast.args) == 1:
+                return self.term(ast.args[0])
+            elif len(ast.args) == 2:
+                builder = self.get_builder()
+                if ast.args[0].args[0] == "+":
+                    return builder.add(c_int(0), self.term(ast.args[1]))
+                else:
+                    return builder.sub(c_int(0), self.term(ast.args[1]))
+            else:
+                builder = self.get_builder()
+                if ast.args[1].args[0] == "+":
+                    return builder.add(self.descend(ast.args[0]), self.term(ast.args[2]))
+                else:
+                    return builder.sub(self.descend(ast.args[0]), self.term(ast.args[2]))
+
+        #добавляем название переменных и их типы из type_declaration
+        elif ast.type == "type_declaration":
+            local_or_own_type = ast.args[0]
+            if len(local_or_own_type.args) == 1:
+                var_type = local_or_own_type.args[0].args[0]
+            else:
+                var_type = local_or_own_type.args[0].args[0] + local_or_own_type.args[0].args[1]
+
+            builder = self.get_builder()
+            type_list = self.flatten(ast.args[1])
+            for var_name in type_list:
+                v = var_init(builder, var_name.args[0], var_type)
+                self.set_var(var_name.args[0], v)
+
+
+        elif ast.type in ["array_identifier", "variable_identifier", "procedure_identifier", "identifier"]:
+            return str(ast.args[0]).lower()
+
+
+        #присваивание
+        elif ast.type == "assignment_statement":
             builder = self.get_builder()
             varName = self.descend(ast.args[0])
             value = self.descend(ast.args[1])
-            ref = self.get_var(varName)
-            builder.store(value, ref)
-            return varName
+            for v in varName:
+                ref = self.get_var(v)
+                builder.store(value, ref)
+            return varName[0]
 
-        elif ast.type in ['procedure','function']:
+        elif ast.type == "identifier_list":
+            if len(ast.args) == 1:
+                return [ast.args[0]]
+            else:
+                ls = list()
+                ls.extend( self.descend(ast.args[0]) )
+                ls.append( ast.args[2] )
 
-            def get_params(node):
-                """ Return a list of tuples of params """
-                if node.type == 'parameter':
-                    return [(self.descend(node.args[0]), types.translation[self.descend(node.args[1])])]
-                else:
-                    l = []
-                    for p in node.args:
-                        l.extend(get_params(p))
-                    return l
+        elif ast.type == "type":
+            return types.translation[ast.args[0]]
 
-            head = ast.args[0]
-            if head.type == 'procedure_head':
+        elif ast.type == "specifier":
+            if len(ast.args) == 1:
+                return self.descend(ast.args[0])
+
+        elif ast.type == "specification_part":
+            if len(ast.args) == 2:
+                specifier = self.descend(ast.args[0])
+                identifiers = self.descend(ast.args[1])
+                return [(specifier, identifiers)]
+            else:
+                ls = list()
+                ls.extend( self.descend(ast.args[0]) )
+                ls.append( (self.descend(ast.args[1]), self.descend(ast.args[2]) ) )
+                return ls
+
+
+        #объявление процедур. Храним название процедур(перегрузку запрещаем)
+        elif ast.type == "procedure_declaration":
+            type = None
+            if len(ast.args) > 2:
+                type = ast.args[0].args[0]
+                heading = ast.args[1]
+                body = ast.args[2]
+            else:
+                heading = ast.args[0]
+                body = ast.args[1]
+
+            if not type:
                 return_type = types.void
             else:
-                return_type = types.translation[self.descend(head.args[-1])]
+                return_type = types.translation[type]
 
-            name = self.descend(head.args[0])
-            if len(head.args) > 1:
-                params = get_params(head.args[1])
-            else:
-                params = []
-            code = ast.args[1]
+            proc_name = heading.args[0].args[0].lower()
 
-            ftype = types.function(return_type,[ i[1] for i in params ])
-            f = Function.new(self.module, ftype, name)
+
+            args = list()
+            value_part = list()
+            specification_part = list()
+            if len(heading.args) > 1:
+                i = 1
+                while i < len(heading.args):
+                    if heading.args[i] is not None:
+                        if heading.args[i].type == "formal_parameter_part":
+                            if len(heading.args[i].args) > 0:
+                                formal_parameter = heading.args[i].args[0]
+                                if len(formal_parameter.args) > 0:
+                                    args = self.flatten(formal_parameter.args[0])
+                        elif heading.args[i].type == "value_part":
+                            value_part = heading.args[i]
+                            if len(value_part.args) > 0:
+                                value_part = self.flatten(value_part.args[0])
+                        elif heading.args[i].type == "specification_part":
+                            specification_part = self.descend(heading.args[i])
+                    i += 1
+
+            code = body
+
+            param_types = list()
+            for arg in args:
+                for type, var_names in specification_part:
+                    if arg in var_names:
+                        param_types.append(type)
+                        break
+
+
+            ftype = types.function(return_type,param_types)  #типы заранее мы не знаем
+            f = Function.new(self.module, ftype, proc_name)
             fb = Builder.new(f.append_basic_block("entry"))
 
             self.contexts.append(Context( f,fb ))
             b = self.get_builder()
-            for i,p in enumerate(params):
-                x = f.args[i]; x.name = p[0]
-                self.set_param(p[0],x)
+            for i, p in enumerate(args):
+                x = f.args[i]
+                x.name = p
+                self.set_param(p, x)
 
-            if ast.type == 'function':
-                type_name = types.reverse_translation[return_type]
-                v = var_init(b, name, type_name)
-                self.set_var(name,v)
+            type_name = types.reverse_translation[return_type]
+            v = var_init(b, proc_name, type_name)
+            self.set_var(proc_name,v)
             self.descend(code)
             b = self.get_builder()
-            if ast.type == 'procedure':
-                b.ret_void()
-            else:
-                b.ret(b.load(self.get_var(name)))
+            b.ret(b.load(self.get_var(proc_name)))
             self.contexts.pop()
 
-        
 
         elif ast.type == "while":
             self.counter += 1
@@ -255,40 +416,6 @@ class Writer(object):
             self.descend(while_block)
 
 
-        elif ast.type == "if":
-            now = self.get_function()
-            builder = self.get_builder()
-
-            #if
-            cond = self.descend(ast.args[0])
-
-            # the rest
-            self.counter += 1
-            tail = now.append_basic_block("tail_%d" % self.counter)
-
-            # then
-            then_block = now.append_basic_block("if_%d" % self.counter)
-            self.contexts.append( Context(then_block)  )
-            self.descend(ast.args[1])
-            b = self.get_builder()
-            b.branch(tail)
-            b.position_at_end(tail)
-            self.contexts.pop()
-
-            # else
-            else_block = now.append_basic_block("else_%d" % self.counter)
-            self.contexts.append( Context(else_block)  )
-            if len(ast.args) > 2:
-                self.descend(ast.args[2])
-            b = self.get_builder()
-            b.branch(tail)
-            b.position_at_end(tail)
-            self.contexts.pop()
-
-            builder.cbranch(cond,then_block,else_block)
-            self.contexts[-1].builder = Builder.new(tail)
-
-
         elif ast.type in ["sign","and_or"]:
             return ast.args[0]
 
@@ -296,34 +423,6 @@ class Writer(object):
             v = self.descend(ast.args[0])
             builder = self.get_builder()
             return builder.not_(v)
-
-        elif ast.type == "op":
-            sign = self.descend(ast.args[0])
-            v1 = self.descend(ast.args[1])
-            v2 = self.descend(ast.args[2])
-
-            builder = self.get_builder()
-
-            if sign == "+":
-                return builder.add(v1, v2)
-            elif sign == "-":
-                return builder.sub(v1, v2)
-            elif sign == "*":
-                return builder.mul(v1, v2)
-            elif sign == "/":
-                return builder.fdiv(v1, v2)
-            elif sign == "div":
-                return builder.sdiv(v1, v2)
-            elif sign == "mod":
-                return builder.urem(v1, v2)
-            elif sign in [">",">=","=","<=","<","<>"]:
-                return compare(sign,v1,v2,builder)
-            elif sign == "and":
-                return builder.and_(v1,v2)
-            elif sign == "or":
-                return builder.or_(v1,v2)
-            else:
-                print sign    
 
 
         elif ast.type == "element":
@@ -343,8 +442,25 @@ class Writer(object):
             s = c_string(self.module,ast.args[0])
             return pointer(b,s)
 
-        elif ast.type == "integer":
-            return c_int(int(ast.args[0]))
+        elif ast.type == "unsigned_number":
+            if len(ast.args) == 1:
+                return self.descend(ast.args[0])
+            else:
+                exp = self.descend(ast.args[1])
+                return self.descend(ast.args[0]) * pow(x=10, y=exp)
+
+        elif ast.type == "decimal_number":
+            if len(ast.args) == 1:
+                return self.descend(ast.args[0])
+            else:
+                return self.descend(ast.args[0]) + self.descend(ast.args[1])
+
+        elif ast.type == "unsigned_integer":
+            if len(ast.args) == 1:
+                return c_int(int(ast.args[0]))
+            else:
+                value = self.descend(ast.args[0]) * 10 + ast.args[1]
+                return c_int(int(ast.args[0]))
 
         elif ast.type == "real":
             return c_real(float(ast.args[0]))

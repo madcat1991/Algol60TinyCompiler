@@ -33,8 +33,9 @@ class Context(object):
 contexts = list()
 
 functions = {
-    'write':('integer', [Any()], [], []),
-    'writeln':('integer', [Any()], [], []),
+    'write':('void', [Any()], [], []),
+    'writeln':('void', [Any()], [], []),
+    'writeint':('void', ["integer"], [], []),
 }
 
 def pop():
@@ -252,7 +253,3 @@ def check(node):
                     elif len(el.args) == 3 and (get_type(el.args[1]) != "integer" or get_type(el.args[2]) != "integer"):
                         raise Exception, "For requires arithmetic expressions if you use STEP..UNTIL construction"
                 pop()
-
-
-            else:
-                print "semantic missing:", node.type

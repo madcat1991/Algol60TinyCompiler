@@ -17,9 +17,10 @@ def procedure(*args):
 
 
 translation = {
-    "INTEGER": integer,
-    "REAL": real,
-    "CHAR": char
+    "integer": integer,
+    "real": real,
+    "string": string,
+    "boolean": boolean,
 }
 
 class ReverseDict(object):
@@ -33,7 +34,8 @@ class ReverseDict(object):
 reverse_translation = ReverseDict(translation)
 
 defaults = {
-    "INTEGER": 0,
-    "REAL": 0.0,
-    "CHAR": '_'
+    "integer": 0,
+    "real": 0.0,
+    "string": '',
+    "boolean": False,
 }

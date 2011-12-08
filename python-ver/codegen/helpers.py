@@ -85,10 +85,7 @@ def add_stdio(mod):
         "printf": mod.add_function(types.function(types.void, (Type.pointer(types.int8, 0),), 1), "printf"),
         "writeln": create_write(mod,ln=True),
         "write": create_write(mod),
-        "writeint": create_write_alt('integer',mod),
-        "writereal": create_write_alt('real',mod),
-        "writelnint": create_write_alt('integer',mod,ln=True),
-        "writelnreal": create_write_alt('real',mod,ln=True)
+        "writeint": create_write_alt('integer', mod)
     }
 
 def create_main(mod):
@@ -153,7 +150,7 @@ def create_write_alt(type_,mod,ln=False):
 
     b.call(printf,[stringConst,print_alt.args[0]])
     b.ret_void()
-    return print_alt;
+    return print_alt
 
 
 class Block(object):

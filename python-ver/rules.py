@@ -197,7 +197,7 @@ def p_specification_part(t):
                             | specifier identifier_list SEMICOLON
                             | specification_part specifier identifier_list"""
     if len(t) == 4:
-        if t[3] == 'SEMICOLON':
+        if t[3] == ';':
             t[0] = Node("specification_part", t[1], t[2])
         else:
             t[0] = Node("specification_part", t[1], t[2], t[3])
@@ -251,8 +251,7 @@ def p_label(t):
     t[0] = Node("label", t[1])
 
 def p_unlabelled_basic_statement(t):
-    r"""unlabelled_basic_statement  :
-                                    | assignment_statement
+    r"""unlabelled_basic_statement  : assignment_statement
                                     | go_to_statement
                                     | procedure_statement"""
     if len(t) > 1:
@@ -306,9 +305,9 @@ def p_procedure_statement(t):
     t[0] = Node("procedure_statement", t[1], t[2])
 
 def p_actual_parameter_part(t):
-    r"""actual_parameter_part   :
+    r"""actual_parameter_part   : LCBRACKET RCBRACKET
                                 | LCBRACKET actual_parameter_list RCBRACKET"""
-    if len(t) > 1:
+    if len(t) > 2:
         t[0] = Node("actual_parameter_part", t[2])
 
 def p_actual_parameter_list(t):
@@ -471,6 +470,8 @@ def p_unsigned_integer(t):
     r"""unsigned_integer    : DIGIT
                             | unsigned_integer DIGIT"""
     if len(t) > 2:
+        t[0] = Node("unsigned_integer", t[1], t[2])
+    else:
         t[0] = Node("unsigned_integer", t[1])
 
 def p_decimal_fraction(t):

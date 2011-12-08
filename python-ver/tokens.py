@@ -233,7 +233,7 @@ if __name__ == "__main__":
 #                break
 
 
-    f = open("../example.alg", "r")
+    f = open("../common/test.alg", "r")
     data = f.read()
     f.close()
 
